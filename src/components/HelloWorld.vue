@@ -1,58 +1,214 @@
 <template>
-  <div class="hello">
-    <h1>{{ msg }}</h1>
-    <p>
-      For a guide and recipes on how to configure / customize this project,<br>
-      check out the
-      <a href="https://cli.vuejs.org" target="_blank" rel="noopener">vue-cli documentation</a>.
-    </p>
-    <h3>Installed CLI Plugins</h3>
-    <ul>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-babel" target="_blank" rel="noopener">babel</a></li>
-      <li><a href="https://github.com/vuejs/vue-cli/tree/dev/packages/%40vue/cli-plugin-eslint" target="_blank" rel="noopener">eslint</a></li>
-    </ul>
-    <h3>Essential Links</h3>
-    <ul>
-      <li><a href="https://vuejs.org" target="_blank" rel="noopener">Core Docs</a></li>
-      <li><a href="https://forum.vuejs.org" target="_blank" rel="noopener">Forum</a></li>
-      <li><a href="https://chat.vuejs.org" target="_blank" rel="noopener">Community Chat</a></li>
-      <li><a href="https://twitter.com/vuejs" target="_blank" rel="noopener">Twitter</a></li>
-      <li><a href="https://news.vuejs.org" target="_blank" rel="noopener">News</a></li>
-    </ul>
-    <h3>Ecosystem</h3>
-    <ul>
-      <li><a href="https://router.vuejs.org" target="_blank" rel="noopener">vue-router</a></li>
-      <li><a href="https://vuex.vuejs.org" target="_blank" rel="noopener">vuex</a></li>
-      <li><a href="https://github.com/vuejs/vue-devtools#vue-devtools" target="_blank" rel="noopener">vue-devtools</a></li>
-      <li><a href="https://vue-loader.vuejs.org" target="_blank" rel="noopener">vue-loader</a></li>
-      <li><a href="https://github.com/vuejs/awesome-vue" target="_blank" rel="noopener">awesome-vue</a></li>
-    </ul>
-  </div>
+  <v-row class="fill-height">
+    <v-col>
+      <v-sheet height="64">
+        <v-toolbar
+          flat
+        >
+          <v-btn
+            outlined
+            class="mr-4"
+            color="grey darken-2"
+            @click="setToday"
+          >
+            Today
+          </v-btn>
+          <v-btn
+            fab
+            text
+            small
+            color="grey darken-2"
+            @click="prev"
+          >
+            <v-icon small>
+              mdi-chevron-left
+            </v-icon>
+          </v-btn>
+          <v-btn
+            fab
+            text
+            small
+            color="grey darken-2"
+            @click="next"
+          >
+            <v-icon small>
+              mdi-chevron-right
+            </v-icon>
+          </v-btn>
+          <v-toolbar-title v-if="$refs.calendar">
+            {{ $refs.calendar.title }}
+          </v-toolbar-title>
+          <v-spacer></v-spacer>
+          <v-menu
+            bottom
+            right
+          >
+            <template v-slot:activator="{ on, attrs }">
+              <v-btn
+                outlined
+                color="grey darken-2"
+                v-bind="attrs"
+                v-on="on"
+              >
+                <span>{{ typeToLabel[type] }}</span>
+                <v-icon right>
+                  mdi-menu-down
+                </v-icon>
+              </v-btn>
+            </template>
+            <v-list>
+              <v-list-item @click="type = 'day'">
+                <v-list-item-title>Day</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="type = 'week'">
+                <v-list-item-title>Week</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="type = 'month'">
+                <v-list-item-title>Month</v-list-item-title>
+              </v-list-item>
+              <v-list-item @click="type = '4day'">
+                <v-list-item-title>4 days</v-list-item-title>
+              </v-list-item>
+            </v-list>
+          </v-menu>
+        </v-toolbar>
+      </v-sheet>
+      <v-sheet height="600">
+        <v-calendar
+          ref="calendar"
+          v-model="focus"
+          color="primary"
+          :events="events"
+          :event-color="getEventColor"
+          :type="type"
+          @click:event="showEvent"
+          @click:more="viewDay"
+          @click:date="viewDay"
+          @change="updateRange"
+        ></v-calendar>
+        <v-menu
+          v-model="selectedOpen"
+          :close-on-content-click="false"
+          :activator="selectedElement"
+          offset-x
+        >
+          <v-card
+            color="grey lighten-4"
+            min-width="350px"
+            flat
+          >
+            <v-toolbar
+              :color="selectedEvent.color"
+              dark
+            >
+              <v-btn icon>
+                <v-icon>mdi-pencil</v-icon>
+              </v-btn>
+              <v-toolbar-title v-html="selectedEvent.name"></v-toolbar-title>
+              <v-spacer></v-spacer>
+              <v-btn icon>
+                <v-icon>mdi-heart</v-icon>
+              </v-btn>
+              <v-btn icon>
+                <v-icon>mdi-dots-vertical</v-icon>
+              </v-btn>
+            </v-toolbar>
+            <v-card-text>
+              <span v-html="selectedEvent.details"></span>
+            </v-card-text>
+            <v-card-actions>
+              <v-btn
+                text
+                color="secondary"
+                @click="selectedOpen = false"
+              >
+                Cancel
+              </v-btn>
+            </v-card-actions>
+          </v-card>
+        </v-menu>
+      </v-sheet>
+    </v-col>
+  </v-row>
 </template>
 
 <script>
 export default {
   name: 'HelloWorld',
-  props: {
-    msg: String
-  }
-}
-</script>
+  data: () => ({
+    focus: '',
+    type: 'month',
+    typeToLabel: {
+      month: 'Month',
+      week: 'Week',
+      day: 'Day',
+      '4day': '4 Days',
+    },
+    selectedEvent: {},
+    selectedElement: null,
+    selectedOpen: false,
+    events: [],
+  }),
+  mounted() {
+    this.$refs.calendar.checkChange();
+    this.setWeekendsBackgroundColor();
+  },
+  methods: {
+    viewDay({ date }) {
+      this.focus = date;
+      this.type = 'day';
+    },
+    getEventColor(event) {
+      return event.color;
+    },
+    setToday() {
+      this.focus = '';
+    },
+    prev() {
+      this.$refs.calendar.prev();
+    },
+    next() {
+      this.$refs.calendar.next();
+    },
+    showEvent({ nativeEvent, event }) {
+      const open = () => {
+        this.selectedEvent = event;
+        this.selectedElement = nativeEvent.target;
+        requestAnimationFrame(() => requestAnimationFrame(() => {
+          this.selectedOpen = true;
+        }));
+      };
 
-<!-- Add "scoped" attribute to limit CSS to this component only -->
-<style scoped>
-h3 {
-  margin: 40px 0 0;
-}
-ul {
-  list-style-type: none;
-  padding: 0;
-}
-li {
-  display: inline-block;
-  margin: 0 10px;
-}
-a {
-  color: #42b983;
-}
-</style>
+      if (this.selectedOpen) {
+        this.selectedOpen = false;
+        requestAnimationFrame(() => requestAnimationFrame(() => open()));
+      } else {
+        open();
+      }
+
+      nativeEvent.stopPropagation();
+    },
+    updateRange(event) {
+      const viewStart = this.$refs.calendar.getStartOfWeek(event.start);
+      const viewEnd = this.$refs.calendar.getEndOfWeek(event.end);
+
+      console.log(viewStart, viewEnd);
+    },
+    rnd(a, b) {
+      return Math.floor((b - a + 1) * Math.random()) + a;
+    },
+    setWeekendsBackgroundColor() {
+      const squareDaysElements = document.getElementsByClassName('v-calendar-weekly__day');
+      Array.from(squareDaysElements).forEach((day) => {
+        day.style.backgroundColor = '#F2F7FF';
+      });
+
+      const weekendPositions = [0, 7, 14, 21, 28, 6, 13, 20, 27, 34];
+
+      for (let i = 0; i < weekendPositions.length; i += 1) {
+        squareDaysElements[weekendPositions[i]].style.backgroundColor = '#E3EAF6';
+      }
+    },
+  },
+};
+</script>
